@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Loom — Learning journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="threadCanvas" class="thread-canvas" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+  <div id="confettiRoot" class="confetti-root" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+          <path class="loom-ring" d="M18 4 L32 18 L18 32 L4 18 Z" stroke="currentColor" stroke-width="1.5" />
+          <path class="loom-weave" d="M8 18 H28 M18 8 V28" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
+      </span>
+      <div>
+        <h1>Loom</h1>
+        <p class="tagline">Weave reflections into a skill graph</p>
+      </div>
+    </div>
+    <button type="button" id="seedBtn" class="btn btn-ghost">
+      <span class="btn-icon" aria-hidden="true">✨</span> Load demo data
+    </button>
+  </header>
+
+  <main class="layout">
+    <section class="panel capture-panel" aria-labelledby="capture-heading">
+      <h2 id="capture-heading">New reflection</h2>
+      <p class="hint">Write what you noticed while learning—one session, one honest paragraph.</p>
+
+      <div class="prompt-chips" role="group" aria-label="Example prompts">
+        <button type="button" class="chip" data-prompt="Chess tonight: I blitzed moves when the clock got low and missed a simple fork.">♟️ rushed chess</button>
+        <button type="button" class="chip" data-prompt="Swim practice: breathing got choppy once I tried to sprint the last lap.">🏊 breath & pace</button>
+        <button type="button" class="chip" data-prompt="Cooking: mise en place saved me, but I still burned the garlic while multitasking.">🍳 calm prep</button>
+      </div>
+
+      <form id="captureForm">
+        <label class="sr-only" for="reflection">Reflection</label>
+        <div class="textarea-wrap">
+          <textarea
+            id="reflection"
+            name="reflection"
+            rows="6"
+            placeholder="e.g. At the pool today my breathing fell apart when I rushed the turn…"
+            required
+          ></textarea>
+          <span id="charCount" class="char-count">0 chars</span>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" id="submitBtn">
+            <span class="btn-shimmer" aria-hidden="true"></span>
+            <span class="btn-label">Weave into graph</span>
+            <span class="btn-icon" aria-hidden="true">🧵</span>
+          </button>
+        </div>
+      </form>
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel graph-panel" aria-labelledby="graph-heading">
+      <div class="panel-head">
+        <h2 id="graph-heading">Skill graph</h2>
+        <div class="graph-tools">
+          <button type="button" id="shuffleGraph" class="btn btn-ghost btn-sm" title="Jiggle the layout">🔀 Shuffle</button>
+          <button type="button" id="resetZoom" class="btn btn-ghost btn-sm" title="Reset zoom">⊙ Reset</button>
+          <button type="button" id="refreshGraph" class="btn btn-ghost btn-sm">↻ Refresh</button>
+        </div>
+      </div>
+      <p class="graph-hint">Drag nodes · scroll to zoom · hover to spotlight · double-click to pin</p>
+      <div id="graphEmpty" class="empty-state hidden">
+        <p class="empty-emoji" aria-hidden="true">🕸️</p>
+        <p>No graph yet. Load demo data or add a reflection.</p>
+      </div>
+      <div id="graphWrap" class="graph-wrap">
+        <svg id="graph" role="img" aria-label="Activity and capability graph"></svg>
+        <div id="nodeTooltip" class="node-tooltip hidden" role="tooltip"></div>
+        <ul class="legend">
+          <li><span class="dot activity"></span> Activity</li>
+          <li><span class="dot capability"></span> Capability</li>
+          <li><span class="line develops"></span> Develops</li>
+          <li><span class="line connection"></span> Transfer link</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="panel insight-panel" aria-labelledby="insight-heading">
+      <h2 id="insight-heading">Insights</h2>
+      <div id="insightPlaceholder" class="empty-state insight-empty">
+        <p class="empty-emoji" aria-hidden="true">💡</p>
+        <p>After you weave a reflection, extracted skills and possible cross-activity connections appear here.</p>
+      </div>
+      <article id="insightCard" class="insight-card hidden" hidden>
+        <div class="extracted pop-in">
+          <h3>Extracted</h3>
+          <p class="activity-row">
+            <strong>Activity</strong>
+            <span id="extActivity" class="pill pill-activity"></span>
+          </p>
+          <p class="caps-row">
+            <strong>Capabilities</strong>
+            <span id="extCaps" class="cap-chips"></span>
+          </p>
+        </div>
+        <div id="connectionBlock" class="connection hidden pop-in pop-in-delay">
+          <h3>Possible connection <span id="confidenceBadge" class="confidence-badge"></span></h3>
+          <p id="connectionText" class="connection-text"></p>
+          <p class="meta"><span id="connectionMeta"></span></p>
+          <div class="experiment">
+            <h4>Try next</h4>
+            <p id="experimentText"></p>
+            <button type="button" id="copyExperiment" class="btn btn-ghost btn-sm copy-btn">Copy experiment</button>
+          </div>
+          <div id="sourcesBlock" class="sources hidden">
+            <h4>Sources</h4>
+            <ul id="sourcesList"></ul>
+          </div>
+        </div>
+        <details id="traceDetails" class="trace">
+          <summary>Pipeline trace</summary>
+          <pre id="tracePre"></pre>
+        </details>
+      </article>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="app.js" type="module"></script>
+</body>
+</html>
