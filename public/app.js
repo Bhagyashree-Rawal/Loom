@@ -91,20 +91,64 @@ function burstConfetti(x, y) {
   }
 }
 
+function renderTrace(trace = []) {
+  const ol = $("#traceList");
+  ol.innerHTML = "";
+  const add = (title, detail, model) => {
+    const li = document.createElement("li");
+    const strong = document.createElement("strong");
+    strong.textContent = title;
+    li.append(strong, ` ${detail}`);
+    if (model) {
+      const small = document.createElement("small");
+      small.textContent = ` (${model})`;
+      li.append(small);
+    }
+    ol.append(li);
+  };
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  for (const t of trace) {
+    const o = t.output;
+    if (t.step === "Extract") {
+      add("Read your reflection.", `Filed under "${o.activity}" with capabilities: ${o.capabilities.join(", ")}.`, t.model);
+    } else if (t.step === "Graph query") {
+      const others = [...new Set(o.map((r) => r.other))].join(", ");
+      add("Searched your history.", !o.length
+        ? "No other activities to compare yet."
+        : t.mode === "shared capability"
+          ? `Found shared capabilities with: ${others}.`
+          : `No exact shared capability, so it looked at recent notes from: ${others}.`, t.model);
+    } else if (t.step === "Coach") {
+      add("Reasoned about it.", o.connection
+        ? `Proposed a possible link with ${o.connection.other_activity}.`
+        : "Saw no strong link, so it focused on your next experiment.", t.model);
+    } else if (t.step === "Search") {
+      add("Looked for resources.", !o.enabled
+        ? "Web search is off."
+        : o.error
+          ? `Search failed: ${o.error}`
+          : o.urls.length
+          ? `Searched "${o.query}" and kept ${plural(o.urls.length, "result")}.`
+          : `Searched "${o.query}" but found nothing.`, t.model);
+    }
+  }
+  $("#tracePre").textContent = JSON.stringify(trace, null, 2);
+}
+
 function renderInsight(data) {
   insightPlaceholder.classList.add("hidden");
   insightCard.classList.remove("hidden");
   insightCard.hidden = false;
 
-  $$(".pop-in", insightCard).forEach((el) => {
+  document.querySelectorAll("#insightCard .pop-in").forEach((el) => {
     el.classList.remove("pop-in", "pop-in-delay");
     void el.offsetWidth;
-    el.classList.add(el.closest("#connectionBlock") ? "pop-in pop-in-delay" : "pop-in");
+    el.classList.add("pop-in");
+    if (el.id === "connectionBlock") el.classList.add("pop-in-delay");
   });
 
   const ex = data.extracted || {};
   $("#extActivity").textContent = ex.activity || "—";
-
   const capsEl = $("#extCaps");
   capsEl.innerHTML = "";
   (ex.capabilities || []).forEach((c, idx) => {
@@ -114,57 +158,53 @@ function renderInsight(data) {
     span.style.animationDelay = `${idx * 0.08}s`;
     capsEl.append(span);
   });
-  if (!ex.capabilities?.length) capsEl.textContent = "—";
+  $("#insightLine").textContent = data.coach?.insight || "";
 
-  const connBlock = $("#connectionBlock");
   const hy = data.connection;
-  const badge = $("#confidenceBadge");
-  badge.textContent = "";
-  badge.className = "confidence-badge";
-
-  if (!hy) {
-    connBlock.classList.add("hidden");
-    $("#tracePre").textContent = JSON.stringify(data.trace || [], null, 2);
-    return;
+  const connBlock = $("#connectionBlock");
+  $("#noConnection").classList.toggle("hidden", !!hy);
+  connBlock.classList.toggle("hidden", !hy);
+  if (hy) {
+    $("#connectionText").textContent = hy.connection || "";
+    $("#connectionMeta").textContent = `${hy.from} ↔ ${hy.other_activity} · ${hy.capability}`;
+    const badge = $("#confidenceBadge");
+    badge.textContent = `${hy.confidence} confidence`;
+    badge.className = `confidence-badge ${hy.confidence}`;
+    const ev = $("#evidenceList");
+    ev.innerHTML = "";
+    (hy.evidence || []).forEach((t) => {
+      const q = document.createElement("blockquote");
+      q.textContent = t;
+      ev.append(q);
+    });
   }
 
-  connBlock.classList.remove("hidden");
-  $("#connectionText").textContent = hy.connection || hy.text || "";
-  $("#connectionMeta").textContent = [
-    hy.capability,
-    hy.from && hy.other_activity ? `${hy.from} ↔ ${hy.other_activity}` : "",
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const exp = data.coach?.experiment;
+  $("#experimentBlock").classList.toggle("hidden", !exp);
+  $("#experimentText").textContent = exp || "";
 
-  if (hy.confidence) {
-    badge.textContent = hy.confidence;
-    badge.classList.add(hy.confidence.toLowerCase());
-  }
-
-  $("#experimentText").textContent = hy.experiment || "—";
-
-  const sourcesBlock = $("#sourcesBlock");
   const list = $("#sourcesList");
   list.innerHTML = "";
   const sources = data.sources || [];
-  if (!sources.length) {
-    sourcesBlock.classList.add("hidden");
-  } else {
-    sourcesBlock.classList.remove("hidden");
-    for (const s of sources) {
-      const li = document.createElement("li");
-      const a = document.createElement("a");
-      a.href = s.url;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.textContent = s.title || s.url;
-      li.append(a);
-      list.append(li);
-    }
+  for (const s of sources) {
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.href = s.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = s.title || s.url;
+    li.append(a);
+    list.append(li);
   }
+  const note = $("#sourcesNote");
+  note.classList.toggle("hidden", sources.length > 0);
+  note.textContent = data.searchError
+    ? `Search failed: ${data.searchError}`
+    : data.braveEnabled
+    ? "No resources found for this search."
+    : "Web search is off. Add BRAVE_API_KEY to .env to see practice resources.";
 
-  $("#tracePre").textContent = JSON.stringify(data.trace || [], null, 2);
+  renderTrace(data.trace);
 }
 
 function getNeighborIds(nodeId, links) {
@@ -496,7 +536,11 @@ form.addEventListener("submit", async (e) => {
     });
     stopLoadingUI();
     renderInsight(data);
-    await loadGraph({ reheat: true });
+    const c = data.connection;
+    await loadGraph({
+      reheat: true,
+      highlightIds: c ? new Set([c.capability, c.from, String(c.other_activity).toLowerCase()]) : null,
+    });
     setStatus("Reflection woven into your graph.", "success");
     const rect = submitBtn.getBoundingClientRect();
     burstConfetti(rect.left + rect.width / 2, rect.top);
@@ -556,6 +600,27 @@ let resizeT;
 window.addEventListener("resize", () => {
   clearTimeout(resizeT);
   resizeT = setTimeout(() => loadGraph({ reheat: false }), 200);
+});
+
+$("#txtFile").addEventListener("change", async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  reflectionEl.value = (await f.text()).slice(0, 6000);
+  reflectionEl.dispatchEvent(new Event("input"));
+  setStatus(`Loaded ${f.name}. Review it, then weave it into the graph.`, "success");
+  e.target.value = "";
+});
+
+$("#plaudBtn").addEventListener("click", async () => {
+  try {
+    const { text } = await api("/api/plaud/pending");
+    if (!text) return setStatus("No new Plaud recording has arrived yet.");
+    reflectionEl.value = text;
+    reflectionEl.dispatchEvent(new Event("input"));
+    setStatus("Plaud recording loaded. Review it, then weave it into the graph.", "success");
+  } catch (err) {
+    setStatus(err.message, "error");
+  }
 });
 
 initThreadCanvas();

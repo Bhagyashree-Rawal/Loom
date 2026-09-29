@@ -1,0 +1,12 @@
+{
+  "name": "loom",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.4",
+    "express": "^4.19.2",
+    "neo4j-driver": "^5.24.0"
+  }
+}

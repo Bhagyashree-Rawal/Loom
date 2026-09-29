@@ -56,6 +56,8 @@
           <span id="charCount" class="char-count">0 chars</span>
         </div>
         <div class="form-actions">
+          <label class="btn btn-ghost btn-sm" for="txtFile">🎙️ Load Plaud transcript<input id="txtFile" type="file" accept=".txt,.md,.srt" class="sr-only" /></label>
+          <button type="button" id="plaudBtn" class="btn btn-ghost btn-sm">Get latest Plaud recording</button>
           <button type="submit" class="btn btn-primary" id="submitBtn">
             <span class="btn-shimmer" aria-hidden="true"></span>
             <span class="btn-label">Weave into graph</span>
@@ -63,6 +65,10 @@
           </button>
         </div>
       </form>
+      <div id="loadingSteps" class="loading-steps hidden" aria-hidden="true">
+        <div class="step-dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>
+        <p id="loadingMsg" class="loading-msg"></p>
+      </div>
       <div id="status" class="status" role="status" aria-live="polite"></div>
     </section>
 
@@ -100,33 +106,33 @@
       </div>
       <article id="insightCard" class="insight-card hidden" hidden>
         <div class="extracted pop-in">
-          <h3>Extracted</h3>
-          <p class="activity-row">
-            <strong>Activity</strong>
-            <span id="extActivity" class="pill pill-activity"></span>
-          </p>
-          <p class="caps-row">
-            <strong>Capabilities</strong>
-            <span id="extCaps" class="cap-chips"></span>
-          </p>
+          <h3>What Loom heard</h3>
+          <p class="activity-row"><strong>Activity</strong> <span id="extActivity" class="pill pill-activity"></span></p>
+          <p class="caps-row"><strong>Capabilities</strong> <span id="extCaps" class="cap-chips"></span></p>
+          <p id="insightLine" class="insight-line"></p>
         </div>
         <div id="connectionBlock" class="connection hidden pop-in pop-in-delay">
           <h3>Possible connection <span id="confidenceBadge" class="confidence-badge"></span></h3>
           <p id="connectionText" class="connection-text"></p>
           <p class="meta"><span id="connectionMeta"></span></p>
-          <div class="experiment">
-            <h4>Try next</h4>
-            <p id="experimentText"></p>
-            <button type="button" id="copyExperiment" class="btn btn-ghost btn-sm copy-btn">Copy experiment</button>
-          </div>
-          <div id="sourcesBlock" class="sources hidden">
-            <h4>Sources</h4>
-            <ul id="sourcesList"></ul>
-          </div>
+          <h4>Based on your notes</h4>
+          <div id="evidenceList" class="evidence"></div>
+        </div>
+        <p id="noConnection" class="hint hidden">No link to your other activities yet. Add reflections in a few different areas and Loom will look for shared capabilities.</p>
+        <div id="experimentBlock" class="experiment hidden">
+          <h4>Try next</h4>
+          <p id="experimentText"></p>
+          <button type="button" id="copyExperiment" class="btn btn-ghost btn-sm copy-btn">Copy experiment</button>
+        </div>
+        <div id="sourcesBlock" class="sources">
+          <h4>Practice resources</h4>
+          <ul id="sourcesList"></ul>
+          <p id="sourcesNote" class="hint hidden"></p>
         </div>
         <details id="traceDetails" class="trace">
-          <summary>Pipeline trace</summary>
-          <pre id="tracePre"></pre>
+          <summary>How Loom got here</summary>
+          <ol id="traceList" class="trace-list"></ol>
+          <details class="raw"><summary>Raw data</summary><pre id="tracePre"></pre></details>
         </details>
       </article>
     </section>
